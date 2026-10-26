@@ -2,7 +2,7 @@ import { assignCommands, type Item, type Source } from "@newsapp/core";
 import { SOURCES } from "./sources.ts";
 import { fetchSource } from "./fetch.ts";
 import { summarize } from "./summarize.ts";
-import { hasDatabase, knownUrls, saveStory } from "./store.ts";
+import { hasDatabase, knownUrls, saveSources, saveStory } from "./store.ts";
 
 // One ingestion pass: fetch every source, skip stored items, file each new item
 // under its commands, summarize it, and save it. Run on a schedule (every 10
@@ -11,6 +11,8 @@ import { hasDatabase, knownUrls, saveStory } from "./store.ts";
 
 const sources = new Map<string, Source>(SOURCES.map((s) => [s.id, s]));
 const canSummarize = Boolean(process.env.ANTHROPIC_API_KEY);
+
+await saveSources(SOURCES);
 
 const results = await Promise.allSettled(SOURCES.map(fetchSource));
 const items: Item[] = [];

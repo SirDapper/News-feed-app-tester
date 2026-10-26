@@ -1,24 +1,26 @@
-import { COMMANDS, SAMPLE_STORIES, type CommandId } from '@newsapp/core';
+import { COMMANDS, type CommandId } from '@newsapp/core';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoryCard } from '@/components/story-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useStories } from '@/hooks/use-stories';
 
-// Commands screen: pick a combatant command, see its stories. Uses the sample
-// stories from @newsapp/core until the Supabase feed is wired up.
+// Commands screen: pick a combatant command, see its stories.
 export default function CommandsScreen() {
   const [selected, setSelected] = useState<CommandId>('INDOPACOM');
   const command = COMMANDS.find((c) => c.id === selected)!;
-  const stories = SAMPLE_STORIES.filter((s) => s.commands.includes(selected));
+  const { stories, loading, error, refresh } = useStories(selected);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}>
           <ThemedText type="subtitle">Commands</ThemedText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
             {COMMANDS.map((c) => (
@@ -37,9 +39,13 @@ export default function CommandsScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {command.summary}
           </ThemedText>
-          {stories.length === 0 ? (
+          {error ? (
             <ThemedText type="small" themeColor="textSecondary">
-              No stories yet.
+              Could not load stories. Pull down to try again.
+            </ThemedText>
+          ) : stories.length === 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {loading ? 'Loading…' : 'No stories yet.'}
             </ThemedText>
           ) : (
             stories.map((s) => <StoryCard key={s.id} story={s} />)

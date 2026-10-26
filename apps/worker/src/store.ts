@@ -1,6 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Item } from "@newsapp/core";
-import type { CommandAssignment } from "@newsapp/core";
+import type { CommandAssignment, Item, Source } from "@newsapp/core";
 
 export interface StoryDraft {
   item: Item;
@@ -12,7 +11,8 @@ let client: SupabaseClient | undefined;
 
 function db(): SupabaseClient | undefined {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // SUPABASE_SERVICE_ROLE_KEY is the older name for the same secret key.
+  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return undefined;
   client ??= createClient(url, key, { auth: { persistSession: false } });
   return client;
@@ -20,6 +20,16 @@ function db(): SupabaseClient | undefined {
 
 export function hasDatabase(): boolean {
   return db() !== undefined;
+}
+
+/** Keeps the sources table in step with the feed list, so items can reference it. */
+export async function saveSources(sources: Source[]): Promise<void> {
+  const supabase = db();
+  if (!supabase) return;
+  const { error } = await supabase
+    .from("sources")
+    .upsert(sources.map(({ id, name, url, trust }) => ({ id, name, url, trust })));
+  if (error) throw error;
 }
 
 // `.in()` goes into the query string, which has a length limit, so ask in
