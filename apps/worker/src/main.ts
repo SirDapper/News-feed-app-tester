@@ -20,20 +20,39 @@ results.forEach((result, i) => {
 });
 
 const seen = await knownUrls(items.map((i) => i.url));
-const fresh = items.filter((i) => !seen.has(i.url));
+const batch = new Set<string>();
+const fresh = items.filter((i) => {
+  // Feeds syndicate each other, so the same URL can arrive twice in one pass.
+  if (seen.has(i.url) || batch.has(i.url)) return false;
+  batch.add(i.url);
+  return true;
+});
 console.log(`${items.length} items fetched, ${fresh.length} new`);
+
+let stored = 0;
+let failed = 0;
 
 for (const item of fresh) {
   const assignment = assignCommands(`${item.title}. ${item.summary}`);
-  if (assignment.countries.length === 0 && assignment.primary === "GLOBAL") {
-    // No place or global topic found; most of these are off-topic.
+  if (assignment.commands.length === 0) {
+    // No place and no global topic found; most of these are off-topic.
     continue;
   }
-  const summary = canSummarize ? await summarize([item], sources) : null;
 
-  if (hasDatabase()) {
-    await saveStory({ item, assignment, summary });
-  } else {
-    console.log(`[${assignment.commands.join(", ")}] ${item.title}`);
+  // One bad item (a duplicate URL, a transient API error) must not end the
+  // pass and lose every item after it.
+  try {
+    const summary = canSummarize ? await summarize([item], sources) : null;
+    if (hasDatabase()) {
+      await saveStory({ item, assignment, summary });
+    } else {
+      console.log(`[${assignment.commands.join(", ")}] ${item.title}`);
+    }
+    stored += 1;
+  } catch (error) {
+    failed += 1;
+    console.warn(`skipped ${item.url}: ${error}`);
   }
 }
+
+console.log(`${stored} stored, ${failed} failed`);

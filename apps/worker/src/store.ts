@@ -22,13 +22,23 @@ export function hasDatabase(): boolean {
   return db() !== undefined;
 }
 
+// `.in()` goes into the query string, which has a length limit, so ask in
+// batches rather than putting every URL of every feed into one request.
+const URL_LOOKUP_CHUNK = 50;
+
 /** URLs already stored, so the worker skips them. */
 export async function knownUrls(urls: string[]): Promise<Set<string>> {
   const supabase = db();
   if (!supabase || urls.length === 0) return new Set();
-  const { data, error } = await supabase.from("items").select("url").in("url", urls);
-  if (error) throw error;
-  return new Set(data.map((r) => r.url as string));
+
+  const known = new Set<string>();
+  for (let i = 0; i < urls.length; i += URL_LOOKUP_CHUNK) {
+    const chunk = urls.slice(i, i + URL_LOOKUP_CHUNK);
+    const { data, error } = await supabase.from("items").select("url").in("url", chunk);
+    if (error) throw error;
+    for (const row of data) known.add(row.url as string);
+  }
+  return known;
 }
 
 /**
@@ -53,22 +63,31 @@ export async function saveStory({ item, assignment, summary }: StoryDraft): Prom
     .single();
   if (storyError) throw storyError;
 
-  const { error: itemError } = await supabase.from("items").insert({
-    story_id: story.id,
-    source_id: item.sourceId,
-    url: item.url,
-    title: item.title,
-    excerpt: item.summary,
-    published_at: item.publishedAt,
-  });
-  if (itemError) throw itemError;
-
-  const { error: commandError } = await supabase.from("story_commands").insert(
-    assignment.commands.map((command) => ({
+  // These three inserts are not one transaction, so if a later one fails
+  // (a duplicate URL, a dropped connection) remove the story row rather than
+  // leave a story the apps would render with no sources. Deleting it cascades
+  // to items and story_commands.
+  try {
+    const { error: itemError } = await supabase.from("items").insert({
       story_id: story.id,
-      command_id: command,
-      is_primary: command === assignment.primary,
-    })),
-  );
-  if (commandError) throw commandError;
+      source_id: item.sourceId,
+      url: item.url,
+      title: item.title,
+      excerpt: item.summary,
+      published_at: item.publishedAt,
+    });
+    if (itemError) throw itemError;
+
+    const { error: commandError } = await supabase.from("story_commands").insert(
+      assignment.commands.map((command) => ({
+        story_id: story.id,
+        command_id: command,
+        is_primary: command === assignment.primary,
+      })),
+    );
+    if (commandError) throw commandError;
+  } catch (error) {
+    await supabase.from("stories").delete().eq("id", story.id);
+    throw error;
+  }
 }

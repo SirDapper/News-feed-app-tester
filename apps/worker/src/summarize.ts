@@ -20,9 +20,11 @@ export async function summarize(items: Item[], sources: Map<string, Source>): Pr
     })
     .join("\n\n");
 
+  // Thinking is always on and is billed against max_tokens, so leave room for
+  // it: a ceiling too low gets spent on reasoning before any text is written.
   const response = await client.beta.messages.create({
     model: MODEL,
-    max_tokens: 2000,
+    max_tokens: 16000,
     output_config: { effort: "low" },
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
@@ -31,6 +33,11 @@ export async function summarize(items: Item[], sources: Map<string, Source>): Pr
   });
 
   if (response.stop_reason === "refusal") return null;
+  if (response.stop_reason === "max_tokens") {
+    // A cut-off summary would be stored as if complete; fall back to the excerpt.
+    console.warn(`summary hit max_tokens for ${items[0]?.url}`);
+    return null;
+  }
   const text = response.content
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
     .join("")

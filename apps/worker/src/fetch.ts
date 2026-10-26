@@ -19,6 +19,19 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+/**
+ * The article URL of an Atom entry. WordPress feeds list the comments feed
+ * first, so take the link marked rel="alternate" (or unmarked) over the first.
+ */
+function atomLink(link: unknown): string {
+  const links = asArray(link as Record<string, unknown> | Record<string, unknown>[]);
+  const alternate =
+    links.find((l) => l?.["@_rel"] === "alternate") ?? links.find((l) => !l?.["@_rel"]);
+  const chosen = alternate ?? links[0];
+  if (typeof chosen === "string") return chosen;
+  return text(chosen?.["@_href"]);
+}
+
 /** Fetches one RSS or Atom feed and returns items from the last 72 hours. */
 export async function fetchSource(source: Source): Promise<Item[]> {
   const res = await fetch(source.url, {
@@ -40,22 +53,27 @@ export async function fetchSource(source: Source): Promise<Item[]> {
       published: text(i.pubDate),
     })),
     ...atomEntries.map((e: Record<string, unknown>) => ({
-      url: text((asArray(e.link as object)[0] as Record<string, unknown>)?.["@_href"]),
+      url: atomLink(e.link),
       title: text(e.title),
       summary: stripHtml(text(e.summary ?? e.content)),
       published: text(e.updated ?? e.published),
     })),
   ]
     .filter((i) => i.url && i.title)
-    .map((i) => {
+    .flatMap((i) => {
+      // An undated item must not be stamped with now: that would float an old
+      // archive entry to the top of the feed as if it had just been published.
       const date = new Date(i.published);
-      return {
-        sourceId: source.id,
-        url: i.url,
-        title: stripHtml(i.title),
-        summary: i.summary.slice(0, 1000),
-        publishedAt: Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString(),
-      };
+      if (Number.isNaN(date.getTime())) return [];
+      return [
+        {
+          sourceId: source.id,
+          url: i.url,
+          title: stripHtml(i.title),
+          summary: i.summary.slice(0, 1000),
+          publishedAt: date.toISOString(),
+        },
+      ];
     })
     .filter((i) => now - Date.parse(i.publishedAt) < MAX_AGE_MS);
 
