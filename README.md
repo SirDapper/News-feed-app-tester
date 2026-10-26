@@ -30,12 +30,17 @@ The web and mobile apps show sample stories until the database is connected.
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in:
+**Step-by-step setup for the database, AI summaries and the website: [SETUP.md](SETUP.md).**
 
-- `ANTHROPIC_API_KEY` turns on AI summaries in the worker. `SUMMARY_MODEL` picks the Claude model (default `claude-opus-5-5`; a cheaper model such as `claude-haiku-5-5` works for high volume).
-- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` let the worker save stories. Create a Supabase project and run `supabase/migrations/0001_init.sql` first.
+All keys go in one `.env` file at the repository root (copy `.env.example`); the web app, mobile app and worker all read it.
+
+- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` let the web and mobile apps read stories. The publishable key is public; row level security makes the tables read-only to it.
+- `SUPABASE_SECRET_KEY` lets the worker save stories. Run the files in `supabase/migrations` in order first.
+- `ANTHROPIC_API_KEY` turns on AI summaries in the worker. `SUMMARY_MODEL` picks the Claude model (`claude-haiku-5-5` in `.env.example` and the scheduled job; a stronger model gives better summaries at higher cost).
 
 Without keys, `npm run ingest` prints what it would store.
+
+The worker runs every 15 minutes on GitHub Actions (`.github/workflows/ingest.yml`), with its keys stored as repository secrets.
 
 ## Changing which countries belong to which command
 
@@ -43,7 +48,6 @@ Edit the table in `packages/core/src/commands.ts`. It is data, so changes to the
 
 ## Next steps
 
-1. Connect the web and mobile feeds to Supabase.
-2. Cluster items about the same event into one story.
-3. Map view with command regions.
-4. Push alerts and the social sources (Telegram, Bluesky, Reddit).
+1. Cluster items about the same event into one story.
+2. Map view with command regions.
+3. Push alerts and the social sources (Telegram, Bluesky, Reddit).
