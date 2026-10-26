@@ -1,0 +1,15 @@
+{
+  "name": "combatant-news",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @newsapp/web",
+    "dev:mobile": "npm run start -w @newsapp/mobile",
+    "ingest": "npm run ingest -w @newsapp/worker",
+    "test": "npm test -w @newsapp/core",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

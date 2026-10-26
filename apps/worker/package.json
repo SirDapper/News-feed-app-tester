@@ -1,0 +1,20 @@
+{
+  "name": "@newsapp/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest": "node --env-file-if-exists=../../.env --experimental-strip-types src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "*",
+    "@newsapp/core": "*",
+    "@supabase/supabase-js": "^2",
+    "fast-xml-parser": "^5"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}
