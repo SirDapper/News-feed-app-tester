@@ -5,14 +5,19 @@ GitHub fetches the news every 15 minutes, Claude writes a short summary of each
 story, the stories are saved in your Supabase database, and the website and
 phone app show them.
 
-You will create two accounts and copy four values out of them:
+Everything here is free except the AI summaries, which are optional. Supabase,
+GitHub Actions (free for public repositories) and Vercel all have free plans
+that are enough for this app. If you skip Part 2, stories show the outlet's own
+short description instead of a Claude summary, and you can add the key later.
+
+You will create up to two accounts and copy up to four values out of them:
 
 | Value | Where it comes from | Secret? |
 | --- | --- | --- |
 | `SUPABASE_URL` | Supabase | No |
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase | No, it is built into the apps |
 | `SUPABASE_SECRET_KEY` | Supabase | **Yes** |
-| `ANTHROPIC_API_KEY` | Anthropic | **Yes** |
+| `ANTHROPIC_API_KEY` (optional, paid) | Anthropic | **Yes** |
 
 **Never paste the two secret keys into a chat, an email, an issue, or a file in
 the repository.** They only go into the places this guide names. If one is ever
@@ -55,7 +60,10 @@ have somewhere to hold the values for a few minutes.
      use **anon** as the publishable key and **service_role** as the secret key.
      Both kinds work.
 
-## Part 2: Turn on AI summaries (Anthropic)
+## Part 2 (optional, paid): Turn on AI summaries (Anthropic)
+
+Skip this part to keep everything free. The Anthropic API is pay-as-you-go,
+with no free plan.
 
 1. Go to <https://console.anthropic.com> and sign up.
 2. Open **Billing** (under Settings), add a payment method and buy a small
@@ -74,11 +82,11 @@ encrypted and never shows them again, not even to you.
 
 1. Open the repository on GitHub and click **Settings** (top bar, far right).
 2. In the left sidebar choose **Secrets and variables > Actions**.
-3. Click **New repository secret** three times, once for each of these. The
-   name must match exactly; the value is what you copied.
+3. Click **New repository secret** once for each of these. The name must
+   match exactly; the value is what you copied.
    - `SUPABASE_URL`
    - `SUPABASE_SECRET_KEY`
-   - `ANTHROPIC_API_KEY`
+   - `ANTHROPIC_API_KEY` (only if you did Part 2)
 4. Once this change is merged, open the **Actions** tab, click **Fetch news**
    in the left list, then **Run workflow > Run workflow** to start the first
    run instead of waiting 15 minutes. It takes about a minute; a green tick
